@@ -9,3 +9,47 @@
 // POST /upload import.csv
 
 // 10mb/s => 10.000 linhas/s
+
+// process.stdin.pipe(process.stdout);
+
+import { Readable, Transform, Writable } from 'node:stream';
+
+class OneToHundredStream extends Readable {
+  index = 1;
+  _read() {
+    const i = this.index++;
+
+    setTimeout(() => {
+      if (i > 100) {
+        this.push(null);
+      } else {
+        const buf = Buffer.from(String(i));
+        this.push(buf);
+      }
+    }, 1000);
+  }
+}
+
+class InverseNumberStream extends Transform {
+  _transform(chunk, encoding, callback) {
+    const transformed = Number(chunk.toString()) * -1;
+    callback(null, Buffer.from(String(transformed)));
+  }
+}
+
+// chunk é o pedaço de dado que está sendo lido
+// encoding é a codificação do dado
+// callback é uma função que deve ser chamada quando o dado for lido
+
+class MultiplyByTenStream extends Writable {
+  _write(chunk, encoding, callback) {
+    const number = Number(chunk.toString());
+    const result = number * 10;
+    console.log(result);
+    callback();
+  }
+}
+
+new OneToHundredStream() // readable
+  .pipe(new InverseNumberStream()) // transform
+  .pipe(new MultiplyByTenStream()); // writable
