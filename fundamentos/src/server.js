@@ -1,8 +1,6 @@
 // const http = require('http');
 // CommonJs => require
 // ESModule => import/export node não suporta precisa add no package.json
-import http from 'node:http';
-import { json } from './middlewares/json.js';
 
 // - Criar usuários
 // - Listagem de usuários
@@ -54,6 +52,13 @@ import { json } from './middlewares/json.js';
 // 307 => Temporary Redirect
 // 308 => Permanent Redirect
 // 100 => Continue
+import http from 'node:http';
+import { json } from './middlewares/json.js';
+import { Database } from './database.js';
+import { randomUUID } from 'node:crypto'; // gera um id unico para cada usuario
+// UUID (Universally Unique Identifier) é um padrão de identificação que fornece um identificador único para objetos ou entidades em sistemas distribuídos. Os UUIDs são amplamente utilizados em bancos de dados, sistemas de arquivos e protocolos de rede para garantir que cada entidade tenha um identificador exclusivo, mesmo quando criados em diferentes locais ou momentos.
+
+const database = new Database();
 
 const users = [];
 
@@ -64,16 +69,21 @@ const server = http.createServer(async (req, res) => {
   // Middleware para ler o corpo da requisição
 
   if (method === 'GET' && url === '/users') {
+    const users = database.select('users');
+
     return res.end(JSON.stringify(users));
   }
   if (method === 'POST' && url === '/users') {
     const { name, email } = req.body;
 
-    users.push({
-      id: 1,
+    const user = {
+      id: randomUUID(),
       name,
       email,
-    });
+    };
+
+    database.insert('users', user);
+
     return res.writeHead(201).end('Criando usuários');
   }
   if (method === 'PUT' && url === '/users') {
