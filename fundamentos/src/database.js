@@ -23,9 +23,17 @@ export class Database {
     fs.writeFile(databasePath, JSON.stringify(this.#database)); // esta sendo criado o db.json na pasta onde está o database.js
   }
 
-  select(table) {
-    const data = this.#database[table] ?? []; // se nao existir
+  select(table, search) {
+    let data = this.#database[table] ?? []; // se nao existir
 
+    if (search) {
+      data = data.filter((row) => {
+        return Object.entries(search).some(([key, value]) => {
+          // Object.entries converte em um objeto  { name: "fulano" , email: "fulano@email.com" } => [ ['name', 'fulano'],['email' , 'fulano@email.com']] e .some verifica se existe algum valor igual no array
+          return row[key].toLowerCase().includes(value.toLowerCase()); // verifica se o valor existe no array
+        });
+      });
+    }
     return data;
   }
 
@@ -39,5 +47,25 @@ export class Database {
     this.#persist();
 
     return data;
+  }
+
+  update(table, id, data) {
+    const rowIndex = this.#database[table].findIndex((row) => row.id === id);
+
+    if (rowIndex > -1) {
+      // ele retorna -1 se não encontrar o id
+      this.#database[table][rowIndex] = { id, ...data }; // atualiza o objeto com mesmo id
+      this.#persist();
+    }
+  }
+
+  delete(table, id) {
+    const rowIndex = this.#database[table].findIndex((row) => row.id === id);
+
+    if (rowIndex > -1) {
+      // ele retorna -1 se não encontrar o id
+      this.#database[table].splice(rowIndex, 1); // splice para remover o elemento
+      this.#persist();
+    }
   }
 }

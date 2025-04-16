@@ -54,13 +54,34 @@
 // 100 => Continue
 import http from 'node:http';
 import { json } from './middlewares/json.js';
-import { Database } from './database.js';
-import { randomUUID } from 'node:crypto'; // gera um id unico para cada usuario
+import { routes } from './routes.js';
+import { extractQueryParams } from './utils/extract-query-params.js';
+// import { Database } from './database.js';
+// import { randomUUID } from 'node:crypto'; // gera um id unico para cada usuario
 // UUID (Universally Unique Identifier) é um padrão de identificação que fornece um identificador único para objetos ou entidades em sistemas distribuídos. Os UUIDs são amplamente utilizados em bancos de dados, sistemas de arquivos e protocolos de rede para garantir que cada entidade tenha um identificador exclusivo, mesmo quando criados em diferentes locais ou momentos.
 
-const database = new Database();
+// const database = new Database();
 
-const users = [];
+// const users = [];
+
+// 3 formas do frontend enviar informações
+
+// 1 e 2 - Ambos fica na url então não podemos enviar informações sensíveis
+
+// 1 - Query Parameters: URL Stateful  => Filtros, paginação, não obrigatório
+// 2 - Route Parameters: Identificação de recurso
+
+// 3 - Request Body: Envio de informações de um formulário
+
+// Exemplos
+
+// 1 - http://localhost:3333/users?userId=1 (chave e valor e se adicionar & podemos adicionar mais parametros)
+// 2 - GET http://localhost:3333/users/1 (id do usuario)
+// 2 - DELETE http://localhost:3333/users/1
+
+// 3 - POST http://localhost:3333/users (body)
+
+// Edição e remoção de usuários
 
 const server = http.createServer(async (req, res) => {
   const { method, url } = req;
@@ -68,34 +89,24 @@ const server = http.createServer(async (req, res) => {
   await json(req, res);
   // Middleware para ler o corpo da requisição
 
-  if (method === 'GET' && url === '/users') {
-    const users = database.select('users');
+  const route = routes.find((route) => {
+    return route.method === method && route.path.test(url);
+  });
 
-    return res.end(JSON.stringify(users));
-  }
-  if (method === 'POST' && url === '/users') {
-    const { name, email } = req.body;
+  if (route) {
+    const routeParams = req.url.match(route.path); // retorna um array com o primeiro elemento sendo a url e o segundo elemento sendo o id
 
-    const user = {
-      id: randomUUID(),
-      name,
-      email,
-    };
+    // console.log(routeParams.groups); // [Object: null prototype] { query: '?search=John' }
 
-    database.insert('users', user);
+    // console.log(extractQueryParams(routeParams.groups.query)); // { search: 'John' }
 
-    return res.writeHead(201).end('Criando usuários');
+    const { query, ...params } = routeParams.groups;
+
+    req.params = params;
+    req.query = query ? extractQueryParams(query) : {}; // se não tiver query string, retorna um objeto vazio
+
+    return route.handler(req, res);
   }
-  if (method === 'PUT' && url === '/users') {
-    return res.end('Atualizando usuários');
-  }
-  if (method === 'DELETE' && url === '/users') {
-    return res.end('Deletando usuários');
-  }
-  if (method === 'PATCH' && url === '/users') {
-    return res.end('Atualizando uma informação específica de um usuário');
-  }
-  return res.writeHead(404).end('Not Found');
 });
 
 server.listen(3333);
